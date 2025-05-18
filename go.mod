@@ -4,7 +4,10 @@ go 1.23.0
 
 toolchain go1.23.9
 
-require github.com/docker/docker v28.1.1+incompatible
+require (
+	github.com/docker/docker v28.1.1+incompatible
+	github.com/fatih/color v1.18.0
+)
 
 require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
@@ -16,6 +19,8 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/moby/term v0.5.2 // indirect

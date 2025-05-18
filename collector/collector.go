@@ -36,6 +36,23 @@ func NewCollector(ctx context.Context) (*Collector, error) {
 	}, nil
 }
 
+// ListRunningContainers returns all running containers
+func (c *Collector) ListRunningContainers(ctx context.Context) ([]container.Summary, error) {
+	options := container.ListOptions{
+		All: false,
+	}
+
+	return c.client.ContainerList(ctx, options)
+}
+
+func (c *Collector) GetContainerName(ctx context.Context, containerID string) (string, error) {
+	container, err := c.client.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return "", err
+	}
+	return container.Name, nil
+}
+
 func (c *Collector) GetContainerStats(ctx context.Context, containerID string) (*ContainerStats, error) {
 	stats, err := c.client.ContainerStats(ctx, containerID, false)
 	if err != nil {
@@ -61,9 +78,14 @@ func (c *Collector) GetContainerStats(ctx context.Context, containerID string) (
 	netInput, netOutput := calculateNetworkPercentage(&statsResponse)
 	blockInput, blockOutput := calculateBlockIOUsage(&statsResponse)
 
+	containerName, err := c.GetContainerName(ctx, containerID)
+	if err != nil {
+		containerName = "Unknown"
+	}
+
 	return &ContainerStats{
 		ID:            containerID,
-		Name:          stats.OSType,
+		Name:          containerName,
 		CPUPercentage: cpuPercent,
 		MemUsage:      memPercent,
 		MemLimit:      memLimit,

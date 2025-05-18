@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 
+	"github.com/fatih/color"
 	"github.com/varsilias/cs-monitor/collector"
 )
 
@@ -32,20 +34,59 @@ func (d *Display) RenderStats(stats *collector.ContainerStats) {
 	blockOutputFormatted := formatBytes(stats.BlockOutput)
 
 	// Display stats
-	fmt.Println("┌─────────────────────────────────────────────────┐")
-	fmt.Println("│              CONTAINER STATS MONITOR            │")
-	fmt.Println("├─────────────────────────────────────────────────┤")
-	fmt.Printf("│ Container ID: %-33s │\n", shortenID(stats.ID))
-	fmt.Println("├─────────────────────────────────────────────────┤")
-	fmt.Printf("│ CPU Usage:    %-6.2f%%                            │\n", stats.CPUPercentage)
-	fmt.Printf("│ Memory:       %-10s / %-10s (%.2f%%)    │\n",
+	color.Cyan("┌─────────────────────────────────────────────────┐")
+	color.Cyan("│              CONTAINER STATS MONITOR            │")
+	color.Cyan("├─────────────────────────────────────────────────┤")
+	color.Green("│ Container ID: %-33s │\n", shortenID(stats.ID))
+	color.Green("├─────────────────────────────────────────────────┤")
+	color.Green("│ CPU Usage:    %-6.2f%%                            │\n", stats.CPUPercentage)
+	color.Green("│ Memory:       %-10s / %-10s (%.2f%%)    │\n",
 		memUsageFormatted, memLimitFormatted, stats.MemPercentage)
-	fmt.Println("├─────────────────────────────────────────────────┤")
-	fmt.Printf("│ Network I/O:  ↓ %-10s / ↑ %-10s      │\n",
+	color.Green("├─────────────────────────────────────────────────┤")
+	color.Blue("│ Network I/O:  ↓ %-10s / ↑ %-10s      │\n",
 		netInputFormatted, netOutputFormatted)
-	fmt.Printf("│ Block I/O:    ↓ %-10s / ↑ %-10s      │\n",
+	color.Blue("│ Block I/O:    ↓ %-10s / ↑ %-10s      │\n",
 		blockInputFormatted, blockOutputFormatted)
-	fmt.Println("└─────────────────────────────────────────────────┘")
+	color.Blue("└─────────────────────────────────────────────────┘")
+}
+
+// MultiContainerStats holds stats for multiple containers
+type MultiContainerStats map[string]*collector.ContainerStats
+
+// RenderMultiStats displays stats for multiple containers
+func (d *Display) RenderMultiStats(stats MultiContainerStats) {
+	clearScreen()
+
+	color.Cyan("┌─────────────────────────────────────────────────────────────────────────────────────────────────┐")
+	color.Cyan("│                                   CONTAINER STATS MONITOR                                       │")
+	color.Cyan("├──────────────┬─────────────────────┬────────────┬─────────────────┬─────────────┬──────────────┤")
+	color.Green("│ CONTAINER ID │ NAME                │ CPU %      │ MEMORY USAGE    │ NET I/O     │ BLOCK I/O    │")
+	color.Green("├──────────────┼─────────────────────┼────────────┼─────────────────┼─────────────┼──────────────┤")
+
+	if len(stats) == 0 {
+		fmt.Println("│ No running containers found                                                                    │")
+		fmt.Println("└──────────────┴─────────────────────┴────────────┴─────────────────┴─────────────┴──────────────┘")
+		return
+	}
+
+	// Sort container IDs for consistent display
+	var containerIDs []string
+	for id := range stats {
+		containerIDs = append(containerIDs, id)
+	}
+	sort.Strings(containerIDs)
+
+	for _, id := range containerIDs {
+		stat := stats[id]
+		fmt.Printf("│ %-12s", shortenID(stat.ID))
+		fmt.Printf("│ %-19s", truncateString(stat.Name, 19))
+		fmt.Printf("│ %8.2f%%  ", stat.CPUPercentage)
+		fmt.Printf("│ %8s/%-8s", formatBytes(stat.MemUsage), formatBytes(stat.MemLimit))
+		fmt.Printf("│ %11s", formatBytes(stat.NetInput)+"/"+formatBytes(stat.NetOutput))
+		fmt.Printf("│ %12s │\n", formatBytes(stat.BlockInput)+"/"+formatBytes(stat.BlockOutput))
+	}
+	fmt.Println("└──────────────┴─────────────────────┴────────────┴─────────────────┴─────────────┴──────────────┘")
+	color.Red("Press Ctrl+C to exit")
 }
 
 func clearScreen() {
@@ -78,4 +119,12 @@ func formatBytes(bytes float64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", bytes/div, "KMGTPE"[exp])
+}
+
+// Helper function to truncate strings for display
+func truncateString(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen-3] + "..."
+	}
+	return s
 }
